@@ -68,6 +68,19 @@ pub fn to_generic_dofn<T: Any, O: Any, I: IntoIterator<Item = O> + 'static>(
     )
 }
 
+pub fn to_generic_dofn_dyn<T: Any, O: Any, I: IntoIterator<Item = O> + 'static>(
+    func: Box<dyn Fn(&T) -> I>,
+) -> GenericDoFn {
+    Box::new(
+        move |untyped_input: &dyn Any| -> Box<dyn Iterator<Item = Box<dyn Any>>> {
+            let typed_input: &T = untyped_input.downcast_ref::<T>().unwrap();
+            Box::new(BoxedIter::<O, I> {
+                typed_iter: func(typed_input).into_iter(),
+            })
+        },
+    )
+}
+
 lazy_static! {
     static ref SERIALIZED_FNS: Mutex<HashMap<String, GenericDoFnWrapper>> =
         Mutex::new(HashMap::new());

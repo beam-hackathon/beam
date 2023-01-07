@@ -8,7 +8,7 @@ use crate::worker::operators::beam_api::org::apache::beam::model::pipeline::v1 a
 
 use crate::transforms::FlatMapTransform;
 use crate::worker::operators::serialize_fn;
-use crate::worker::operators::to_generic_dofn;
+use crate::worker::operators::to_generic_dofn_dyn;
 
 pub struct PipelineHolder {
     pipeline: RefCell<proto::Pipeline>,
@@ -194,23 +194,38 @@ impl<'a, T: 'static> PCollection<'a, T> {
         self.pipeline.apply(name, transform, &self, &[&self.id])
     }
 
+    pub fn map<O: Any + 'static>(
+        &self,
+        name: &String,
+        func: fn(&T) -> O
+    ) -> PCollection<O> {
+        self.map_dyn(name, Box::new(func))
+    }
+
+    pub fn map_dyn<O: Any + 'static>(
+        &self,
+        name: &String,
+        func: Box<dyn Fn(&T) -> O>
+    ) -> PCollection<O> {
+        self.flat_map_dyn(name, Box::new(move |x: &T| -> Vec<O> { vec![func(x)] }))
+    }
+
     pub fn flat_map<O: Any, I: IntoIterator<Item = O> + 'static>(
         &self,
         name: &String,
         func: fn(&T) -> I
     ) -> PCollection<O> {
-        let payload: String = serialize_fn(to_generic_dofn(func));
+      self.flat_map_dyn(name, Box::new(func))
+    }
+
+    pub fn flat_map_dyn<O: Any, I: IntoIterator<Item = O> + 'static>(
+        &self,
+        name: &String,
+        func: Box<dyn Fn(&T) -> I>
+    ) -> PCollection<O> {
+        let payload: String = serialize_fn(to_generic_dofn_dyn(func));
         self.apply(name, &FlatMapTransform{payload: payload})
     }
-    
-    // flat_map(name, func: Box<Fn>) would be a generic fn that calls
-    // .apply() on a PPTransform that wraps the func with serialize_fn
-    // and to_generic_dofn (currently found in operators.rs) and populates
-    // the transform_proto with the right spec as seen in worker_test
-    // and below.
-
-    // map(name, func) could then call
-    //     flat_map(name, |x: T| -> O { vec![func(x)] }).
 }
 
 // This is the main entry point the user should use.

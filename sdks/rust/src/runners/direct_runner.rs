@@ -1,6 +1,5 @@
 use crate::worker::operators::beam_api::org::apache::beam::model::fn_execution::v1::ProcessBundleDescriptor;
 use crate::worker::operators::beam_api::org::apache::beam::model::pipeline::v1::Pipeline;
-use crate::worker::operators::beam_api::org::apache::beam::model::pipeline::v1 as proto;
 
 use crate::construct::Root;
 use crate::construct::build_pipeline;

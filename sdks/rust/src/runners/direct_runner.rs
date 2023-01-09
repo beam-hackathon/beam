@@ -51,6 +51,7 @@ impl DirectRunner {
 impl Runner for DirectRunner {
     fn run_proto(&self, pipeline: Pipeline) -> Result<(), String> {
         let descriptor = DirectRunner::convert(pipeline);
+        println!("{:#?}", descriptor);
 
         let processor = create_bundle_processor(&descriptor);
         processor.start()?;

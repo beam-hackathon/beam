@@ -196,7 +196,6 @@ impl Operator for DoOperator {
         Ok(())
     }
     fn process(&self, windowed_element: &WindowedValue<dyn Any>) -> Result<(), SomeError> {
-        println!("DoFn {:?}", windowed_element);
         let func = self.func; // Can't use self.func directly in a call.
         for output in &mut func(&*windowed_element.value) {
             let windowed_output = windowed_element.with_value(output);
@@ -405,7 +404,7 @@ pub fn create_bundle_processor<'a>(bundle_descriptor: &ProcessBundleDescriptor) 
         }
     }
     info!("{:#?}", consumers);
-    println!("{:#?}", consumers);
+    println!("consumers {:#?}", consumers);
 
     //  Issues with mutually recursive closures.
     //    let create_operator = |transform_id: &String| -> Rc<dyn Operator> {
@@ -440,7 +439,7 @@ pub fn create_bundle_processor<'a>(bundle_descriptor: &ProcessBundleDescriptor) 
             let transform_proto = bundle_descriptor.transforms.get(transform_id).unwrap();
             let mut output_consumers = Vec::new();
             for (_name, pcoll_id) in &transform_proto.outputs {
-                for consumer in consumers.get(pcoll_id).unwrap() {
+                for consumer in consumers.get(pcoll_id).unwrap_or(&[].to_vec()) {
                     output_consumers.push(get_operator(
                         consumer,
                         bundle_descriptor,

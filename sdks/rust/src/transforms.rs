@@ -65,3 +65,32 @@ impl<'x, T: 'static, O: 'static> PTransform<'x, PCollection<'x, T>, PCollection<
         pipeline.create_pcollection_internal()
     }
 }
+
+
+///////////// From https://github.com/kennknowles/beam/pull/10/files
+
+use crate::worker::operators::GBK_URN;
+
+pub struct Gbk {
+    /// One of [StringString, StringInt32, StringInt64] for now.
+    pub tuple_type: String,
+}
+
+impl<'x, K, V> PTransform<'x, PCollection<'x, (K, V)>, PCollection<'x, (K, Vec<V>)>> for Gbk {
+    fn expand(&self, _input: &PCollection<'x, (K, V)>) -> PCollection<'x, (K, Vec<V>)> {
+        panic!("TODO: Provide default impl when expandInternal implemented.");
+    }
+
+    fn expand_internal(
+        &self,
+        _input: &PCollection<'x, (K, V)>,
+        _pipeline: &'x PipelineHolder,
+        _transform_proto: &mut proto::PTransform,
+    ) -> PCollection<'x, (K, Vec<V>)> {
+        _transform_proto.spec = Some(proto::FunctionSpec {
+            urn: GBK_URN.to_string(),
+            payload: self.tuple_type.to_string().into_bytes(),
+        });
+        _pipeline.create_pcollection_internal()
+    }
+}

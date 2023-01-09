@@ -6,10 +6,11 @@ mod construct_tests {
     use apache_beam::construct::PCollection;
     use apache_beam::construct::PTransform;
     use apache_beam::construct::Root;
+    use apache_beam::transforms::Gbk;
     use apache_beam::transforms::Impulse;
 
-    use apache_beam::runners::direct_runner::Runner;
     use apache_beam::runners::direct_runner::DirectRunner;
+    use apache_beam::runners::direct_runner::Runner;
 
     #[test]
     fn apply_impulse() {
@@ -65,7 +66,7 @@ mod construct_tests {
         assert_eq!(transform3.inputs.get("pcoll1").unwrap(), "pcoll1");
         assert_eq!(transform3.unique_name, "Empty");
     }
-    
+
     fn do_fn_str(s: &String) -> Vec<i32> {
         vec![s.len() as i32, 23, 24]
     }
@@ -73,7 +74,7 @@ mod construct_tests {
     fn do_fn_int(n: &i32) -> Vec<String> {
         vec!["1".to_string(), n.to_string()]
     }
-    
+
     // cargo test construct_tests::flat_map -- --nocapture
     #[test]
     fn flat_map() {
@@ -85,7 +86,7 @@ mod construct_tests {
         });
 
         println!("{:#?}", proto);
-        
+
         println!("\nhello!\n");
     }
 
@@ -94,6 +95,31 @@ mod construct_tests {
         let dr = DirectRunner {};
         dr.run(&|root: Root| {
             root.apply(&"impulse".to_string(), &Impulse {});
+        })?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_word_count() -> Result<(), String> {
+        let dr = DirectRunner {};
+        dr.run(&|root: Root| {
+            root.apply(&"impulse".to_string(), &Impulse {})
+            .flat_map(&"Create".to_string(), |_unused : &String| {vec![
+                "In the beginning God created the heaven and the earth.".to_string(),
+                "And the earth was without form, and void; and darkness was upon the face of the deep.".to_string(),
+                "And the Spirit of God moved upon the face of the waters.".to_string(),
+                "And God said, Let there be light: and there was light.".to_string(),
+            ]})
+            .map(&"Normalize".to_string(), |line| {line.to_lowercase()})
+            .flat_map(&"Split".to_string(), |line| {line.split(" ").map(|s| s.to_string()).collect::<Vec<String>>()})
+            .map(&"PairWithOne".to_string(), |word| {(word.to_string(), 1)})
+            .apply(&"GroupByKey".to_string(), &Gbk{tuple_type: "StringInt32".to_string()})
+            .map(&"Sum".to_string(),
+                |grouped_per_word| {(grouped_per_word.0.to_string(), grouped_per_word.1.iter().sum::<i32>())})
+            .map(&"Format".to_string(),
+                |count_per_word| {format!("{}: {}", count_per_word.0, count_per_word.1)})
+            .map(&"Print".to_string(), |result| {println!("RESULT {}", result)})
+            ;
         })?;
         Ok(())
     }
